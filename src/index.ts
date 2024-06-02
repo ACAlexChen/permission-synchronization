@@ -10,9 +10,31 @@ export const inject = {
   ],
 }
 
-export interface Config {}
+export interface Config {
+  Original_Target: {
+    time: string
+    TargetPlatform: string
+    TargetBotID: string
+    TargetGuildID: string
+    OriginalPlatform: string
+    OriginalBotID: string
+    OriginalGuildID: string
+    roleID: string
+  }[]
+}
 
-export const Config: Schema<Config> = Schema.intersect([]) as Schema<Config>
+export const Config: Schema<Config> = Schema.object({
+  Original_Target: Schema.array(Schema.object({
+    time: Schema.string().description('执行时间（cron表达式）').default('30 * * * *').required(),
+    TargetPlatform: Schema.string().description('目标平台').required(),
+    TargetBotID: Schema.string().description('目标机器人ID').required(),
+    TargetGuildID: Schema.string().description('目标频道ID').required(),
+    OriginalPlatform: Schema.string().description('原平台').required(),
+    OriginalBotID: Schema.string().description('原机器人ID').required(),
+    OriginalGuildID: Schema.string().description('原频道ID').required(),
+    roleID: Schema.string().description('需要同步的身份组ID').required(),
+  })).role('table'),
+}) as Schema<Config>
 
 export function apply(ctx: Context, cfg: Config) {
   async function RoleSynchronization (time: string, TargetPlatform: string, TargetBotID: string, TargetGuildID: string, OriginalPlatform: string, OriginalBotID: string, OriginalGuildID: string, roleID: string) {
@@ -41,4 +63,25 @@ export function apply(ctx: Context, cfg: Config) {
       }
     })
   }
+
+
+
+
+
+  for (let i = 0; i < cfg.Original_Target.length; i++) {
+    let item = cfg.Original_Target[i]
+    RoleSynchronization(
+      item.time, 
+      item.TargetPlatform, 
+      item.TargetBotID, 
+      item.TargetGuildID, 
+      item.OriginalPlatform, 
+      item.OriginalBotID, 
+      item.OriginalGuildID, 
+      item.roleID
+    )
+  }
+
+
+
 }
