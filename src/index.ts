@@ -20,16 +20,23 @@ export function apply(ctx: Context, cfg: Config) {
       let TargetGuildMemberIDList = (await ctx.bots[`${TargetPlatform}:${TargetBotID}`].getGuildMemberList(TargetGuildID)).data.map(member => member.user.id)
       let OriginalGuildMemberIDList = (await ctx.bots[`${OriginalPlatform}:${OriginalBotID}`].getGuildMemberList(OriginalGuildID)).data.map(member => member.user.id)
       for (let i = 0; i < TargetGuildMemberIDList.length; i++) {  
-        let TargetGuildMember_AT_OriginalGuild_MemberID = await ctx.database.get('binding',{
-          'pid': TargetGuildMemberIDList[i],
-          'platform': TargetPlatform,
-        },['aid'])
-        let OriginalGuildMember_AT_TargetGuild_MemberID = await ctx.database.get('binding',{
-          'aid': TargetGuildMember_AT_OriginalGuild_MemberID[0].aid,
-          'platform': OriginalPlatform,
-        },['pid'])
-        if (OriginalGuildMemberIDList.includes(OriginalGuildMember_AT_TargetGuild_MemberID[0].pid)){
-          ctx.bots[`${TargetPlatform}:${TargetBotID}`].setGuildMemberRole(TargetGuildID, TargetGuildMemberIDList[i], roleID)
+        try {
+          let TargetGuildMember_AT_OriginalGuild_MemberID = await ctx.database.get('binding',{
+            'pid': TargetGuildMemberIDList[i],
+            'platform': TargetPlatform,
+          },['aid'])
+          var OriginalGuildMember_AT_TargetGuild_MemberID = await ctx.database.get('binding',{
+            'aid': TargetGuildMember_AT_OriginalGuild_MemberID[0].aid,
+            'platform': OriginalPlatform,
+          },['pid'])
+        } finally {
+          if (!OriginalGuildMember_AT_TargetGuild_MemberID){
+            await ctx.bots[`${TargetPlatform}:${TargetBotID}`].unsetGuildMemberRole(TargetGuildID, TargetGuildMemberIDList[i], roleID)
+          } else if (OriginalGuildMemberIDList.includes(OriginalGuildMember_AT_TargetGuild_MemberID[0].pid)){
+            await ctx.bots[`${TargetPlatform}:${TargetBotID}`].setGuildMemberRole(TargetGuildID, TargetGuildMemberIDList[i], roleID)
+          } else {
+            await ctx.bots[`${TargetPlatform}:${TargetBotID}`].unsetGuildMemberRole(TargetGuildID, TargetGuildMemberIDList[i], roleID)
+          }
         }
       }
     })
