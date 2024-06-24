@@ -6,7 +6,8 @@
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
-    "dist"
+    "dist",
+    "src"
   ],
   "license": "MIT",
   "keywords": [
@@ -15,10 +16,13 @@
     "plugin"
   ],
   "peerDependencies": {
-    "koishi": "^4.17.6",
-    "@koishijs/plugin-bind": "^1.5.1"
+    "@koishijs/plugin-console": "^5.11.0",
+    "koishi": "^4.17.6"
   },
   "koishi": {
     "preview": true
+  },
+  "devDependencies": {
+    "@koishijs/client": "^5.11.0"
   }
 }
