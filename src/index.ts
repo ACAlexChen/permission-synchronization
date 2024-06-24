@@ -75,6 +75,7 @@ declare module 'koishi' {
       userAid: string
       sigName: string
       invited: boolean
+      all: number
     }
   }
 
@@ -102,7 +103,8 @@ export function apply(ctx: Context, cfg: Config) {
     id: 'unsigned',
     userAid:'string',
     sigName:'string',
-    invited: 'boolean'
+    invited: 'boolean',
+    all: 'unsigned'
   },{primary:['id'],unique:['id']})
 
   ctx.on('ready', async () => {
@@ -130,7 +132,7 @@ export function apply(ctx: Context, cfg: Config) {
     if (!userId) {
       return '请@正确的用户'
     } else {
-      let nowSigMembers = await ctx.database.get('permissionSynchronizationSig', {id: 0}, ['members'])[0].members
+      let nowSigMembers = (await ctx.database.get('permissionSynchronizationSig', {id: 0}))[0].members
       nowSigMembers.push(`${await ctx.idconverter.getUserAid(userId, session.platform)}`)
       await ctx.database.set('permissionSynchronizationSig', {id: 0}, {members: nowSigMembers})
       return '添加成功'
@@ -139,10 +141,10 @@ export function apply(ctx: Context, cfg: Config) {
 
   ctx.command('permission-synchronization.addSig').alias('psa.addSig').alias('psa.创建小组')
   .option('name', '-n <name>')
-  .option('invitationSystem', '-i')
-  .option('publicitySystem', '-p')
+  .option('invitationSystem', '-i', {fallback: false})
+  .option('publicitySystem', '-p', {fallback: false})
   .action(async ({session, options}, name) => {
-    if (!name) {
+    if (!options.name) {
       return '请输入小组名称'
     } else {
       if (options.invitationSystem && options.publicitySystem){
@@ -152,8 +154,17 @@ export function apply(ctx: Context, cfg: Config) {
       if (pass.length > 0){
         return '小组已存在'
       } else {
+        let allSig = await ctx.database.get('permissionSynchronizationSig',{all: 0})
+        let maxId
+        if (allSig.length === 0){
+          maxId = 0
+        } else {
+          let ids = allSig.map(i => i.id)
+          maxId = Math.max(...ids)
+        }
         await ctx.database.create('permissionSynchronizationSig', {
-          name: name,
+          id: maxId + 1,
+          name: options.name,
           members: [`${await ctx.idconverter.getUserAid(session.userId, session.platform)}`],
           admins: [`${await ctx.idconverter.getUserAid(session.userId, session.platform)}`],
           roles: {main: []},
@@ -162,6 +173,8 @@ export function apply(ctx: Context, cfg: Config) {
           publicitySystem: options.publicitySystem,
           all: 0
         })
+        ctx.logger.info(options)
+        return '创建成功'
       }
     }
   })
@@ -226,10 +239,20 @@ export function apply(ctx: Context, cfg: Config) {
         if (nowI.length !== 0){
           return '你已经被邀请加入该小组'
         }
+        let allSig = await ctx.database.get('permissionSynchronizationSig',{all: 0})
+        let maxId
+        if (allSig.length === 0){
+          maxId = 0
+        } else {
+          let ids = allSig.map(i => i.id)
+          maxId = Math.max(...ids)
+        }
         await ctx.database.create('permissionSynchronizationToBeAccepted', {
+          id: maxId + 1,
           userAid: `${await ctx.idconverter.getUserAid(session.userId, session.platform)}`,
           sigName: name,
-          invited: false
+          invited: false,
+          all: 0
         })
         return `已发送邀请，请等待管理员同意`
       }
@@ -313,7 +336,7 @@ export function apply(ctx: Context, cfg: Config) {
     if (sigInvitation[0].invited){
       if (sigInvitation[0].userAid === `${await ctx.idconverter.getUserAid(session.userId, session.platform)}`){
         let nowMembers = sigInfo[0].members
-        nowMembers.push(`${await ctx.idconverter.getUserAid(options.user, session.platform)}`)
+        nowMembers.push(`${await ctx.idconverter.getUserAid(session.userId, session.platform)}`)
         await ctx.database.set('permissionSynchronizationSig', {name: options.sig}, {members: nowMembers})
         await ctx.database.remove('permissionSynchronizationToBeAccepted', {sigName: options.sig, userAid: `${await ctx.idconverter.getUserAid(options.user, session.platform)}`})
         return '加入成功'
@@ -354,10 +377,19 @@ export function apply(ctx: Context, cfg: Config) {
     if (sigInfo[0].publicitySystem){
       return '该小组为公开小组'
     }
+    let allInvitations = await ctx.database.get('permissionSynchronizationToBeAccepted',{all: 0})
+    let maxId
+    if (allInvitations.length === 0){
+      maxId = 0
+    } else {
+      let ids = allInvitations.map(i => i.id)
+      maxId = Math.max(...ids)
+    }
     await ctx.database.create('permissionSynchronizationToBeAccepted', {
+      id: maxId + 1,
       userAid: `${await ctx.idconverter.getUserAid(options.user, session.platform)}`,
       sigName: options.sig,
-      invited: false
+      invited: true
     })
     return '邀请成功'
   })
